@@ -1,16 +1,18 @@
 # Clerk documentation
 
-## Clerk fields received
+We are using ClerkJS for authentication in our Next 15 app
+
+## Clerk fields received in clerk payload
 
 ### Always guaranteed:
 
-id (userId) - This is always present and unique
-emailAddresses array - But might be empty if user signed up with OAuth
-createdAt timestamp
+- id (userId) - This is always present and unique
+- emailAddresses array - But might be empty if user signed up with OAuth
+- createdAt timestamp
 
 ### Not guaranteed:
 
-firstName - Optional, might be null/empty
-lastName - Optional, might be null/empty
-username - Optional, might be null/empty
-imageUrl - Optional, depends on sign-up method
+- firstName - Optional, might be null/empty
+- lastName - Optional, might be null/empty
+- username - Optional, might be null/empty
+- imageUrl - Optional, depends on sign-up method
