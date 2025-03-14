@@ -4,6 +4,32 @@ import { Webhook } from "svix";
 
 const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET || "";
 
+export const WebhookEventTypes = {
+  // User events
+  USER_CREATED: "user.created",
+  USER_UPDATED: "user.updated",
+  USER_DELETED: "user.deleted",
+  USER_SIGNED_IN: "user.signed_in",
+  USER_SIGNED_OUT: "user.signed_out",
+  // ... other events can be added here
+} as const;
+
+// Make the type more flexible
+type WebhookEventType =
+  | `user.${string}`
+  | (typeof WebhookEventTypes)[keyof typeof WebhookEventTypes];
+
+interface WebhookEvent {
+  type: WebhookEventType; // Now accepts any user.* event
+  data: {
+    id: string;
+    email_addresses?: Array<{ email_address: string }>;
+    first_name?: string | null;
+    last_name?: string | null;
+    // ... other potential fields
+  };
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Get raw payload and headers for verification
@@ -17,9 +43,9 @@ export async function POST(request: Request) {
 
     // 2. Verify using svix + Clerk secret
     const wh = new Webhook(WEBHOOK_SECRET);
-    let verifiedPayload: any;
+    let verifiedPayload: WebhookEvent;
     try {
-      verifiedPayload = wh.verify(payload, svixHeaders);
+      verifiedPayload = wh.verify(payload, svixHeaders) as WebhookEvent;
     } catch (err) {
       console.error("❌ Invalid Clerk webhook signature:", err);
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
@@ -29,88 +55,19 @@ export async function POST(request: Request) {
     //    Typically: { object: 'event', type: 'user.created' | 'user.updated' | 'user.deleted', data: {...} }
     const { type, data } = verifiedPayload;
 
-    // 4. Switch on event type
+    // Cleaner switch statement
     switch (type) {
-      // -----------------------------
-      // user.created
-      // -----------------------------
-      case "user.created": {
-        const { id } = data;
-        // Safely extract email (might be empty array)
-        const primaryEmail = data.email_addresses?.[0]?.email_address ?? null;
-        // Safely extract names (might be undefined/null)
-        const firstName = data.first_name ?? null;
-        const lastName = data.last_name ?? null;
-
-        console.log("✅ [user.created]", {
-          id,
-          primaryEmail,
-          firstName,
-          lastName,
-        });
-
-        // Example DB insert with only guaranteed and optional fields
-        // await db.user.create({
-        //   data: {
-        //     userId: id,           // Always present
-        //     email: primaryEmail,  // Might be null
-        //     firstName,           // Might be null
-        //     lastName,            // Might be null
-        //     // Custom fields you'll collect later
-        //     address: null,
-        //     phone: null,
-        //   }
-        // });
-
+      case WebhookEventTypes.USER_CREATED:
+        await handleUserCreated(data);
         break;
-      }
-
-      // -----------------------------
-      // user.updated
-      // -----------------------------
-      case "user.updated": {
-        const { id } = data;
-        const primaryEmail = data.email_addresses?.[0]?.email_address ?? null;
-        const firstName = data.first_name ?? null;
-        const lastName = data.last_name ?? null;
-
-        console.log("✅ [user.updated]", {
-          id,
-          primaryEmail,
-          firstName,
-          lastName,
-        });
-
-        // await db.user.update({
-        //   where: { userId: id },
-        //   data: {
-        //     email: primaryEmail,
-        //     firstName,
-        //     lastName,
-        //   }
-        // });
-
+      case WebhookEventTypes.USER_UPDATED:
+        await handleUserUpdated(data);
         break;
-      }
-
-      // -----------------------------
-      // user.deleted
-      // -----------------------------
-      case "user.deleted": {
-        const { id } = data;
-
-        console.log("✅ [user.deleted]", { id });
-        // TODO: Delete or mark user as inactive in your DB
-        // e.g.
-        // await db.user.delete({ where: { userId: id } });
-
+      case WebhookEventTypes.USER_DELETED:
+        await handleUserDeleted(data);
         break;
-      }
-
       default:
         console.log("ℹ️ [Unhandled event type]", type);
-      // Optionally return 400 if you want to fail on unknown types
-      // return NextResponse.json({ error: "Unhandled event" }, { status: 400 });
     }
 
     // 5. Return success
@@ -119,4 +76,33 @@ export async function POST(request: Request) {
     console.error("❌ Webhook error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
+}
+
+// Handler functions
+async function handleUserCreated(data: WebhookEvent["data"]) {
+  const { id } = data;
+  const primaryEmail = data.email_addresses?.[0]?.email_address ?? null;
+  const firstName = data.first_name ?? null;
+  const lastName = data.last_name ?? null;
+
+  console.log("✅ [user.created]", { id, primaryEmail, firstName, lastName });
+
+  // await db.user.create({ ... });
+}
+
+async function handleUserUpdated(data: WebhookEvent["data"]) {
+  const { id } = data;
+  const primaryEmail = data.email_addresses?.[0]?.email_address ?? null;
+  const firstName = data.first_name ?? null;
+  const lastName = data.last_name ?? null;
+
+  console.log("✅ [user.updated]", { id, primaryEmail, firstName, lastName });
+
+  // await db.user.update({ ... });
+}
+
+async function handleUserDeleted(data: WebhookEvent["data"]) {
+  const { id } = data;
+  console.log("✅ [user.deleted]", { id });
+  // await db.user.delete({ ... });
 }
