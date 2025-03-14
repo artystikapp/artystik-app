@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 
+import prisma from "@/lib/prisma";
+
 const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET || "";
 
 export const WebhookEventTypes = {
@@ -26,6 +28,8 @@ interface WebhookEvent {
     email_addresses?: Array<{ email_address: string }>;
     first_name?: string | null;
     last_name?: string | null;
+    created_at: number; // Unix timestamp in seconds
+    updated_at: number; // Unix timestamp in seconds
     // ... other potential fields
   };
 }
@@ -84,10 +88,26 @@ async function handleUserCreated(data: WebhookEvent["data"]) {
   const primaryEmail = data.email_addresses?.[0]?.email_address ?? null;
   const firstName = data.first_name ?? null;
   const lastName = data.last_name ?? null;
+  const createdAt = data.created_at;
 
-  console.log("✅ [user.created]", { id, primaryEmail, firstName, lastName });
+  console.log("✅ [user.created]", {
+    id,
+    primaryEmail,
+    firstName,
+    lastName,
+    createdAt,
+  });
 
-  // await db.user.create({ ... });
+  await prisma.user.create({
+    data: {
+      id: id,
+      email: primaryEmail ?? "",
+      firstName: firstName ?? "",
+      lastName: lastName ?? "",
+    },
+  });
+
+  console.log(`✅ user created in DB successfully ${id}`);
 }
 
 async function handleUserUpdated(data: WebhookEvent["data"]) {
@@ -95,14 +115,35 @@ async function handleUserUpdated(data: WebhookEvent["data"]) {
   const primaryEmail = data.email_addresses?.[0]?.email_address ?? null;
   const firstName = data.first_name ?? null;
   const lastName = data.last_name ?? null;
+  const createdAt = data.created_at;
+  const updatedAt = data.updated_at;
 
-  console.log("✅ [user.updated]", { id, primaryEmail, firstName, lastName });
+  console.log("✅ [user.updated]", {
+    id,
+    primaryEmail,
+    firstName,
+    lastName,
+    createdAt,
+    updatedAt,
+  });
 
-  // await db.user.update({ ... });
+  await prisma.user.update({
+    where: { id },
+    data: {
+      email: primaryEmail ?? "",
+      firstName: firstName ?? "",
+      lastName: lastName ?? "",
+    },
+  });
+
+  console.log(`✅ user updated in DB successfully ${id}`);
 }
 
 async function handleUserDeleted(data: WebhookEvent["data"]) {
   const { id } = data;
   console.log("✅ [user.deleted]", { id });
-  // await db.user.delete({ ... });
+
+  await prisma.user.delete({ where: { id } });
+
+  console.log(`✅ user deleted in DB successfully ${id}`);
 }
