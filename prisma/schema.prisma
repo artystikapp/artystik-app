@@ -22,3 +22,35 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime @updatedAt
 }
+
+enum ProductStatus {
+  AVAILABLE
+  SOLD
+}
+
+model Product {
+  id                 String         @id @default(uuid())
+  title              String
+  price              Decimal        @db.Decimal(10,2)
+  currency           String         @default("INR")
+  category           String
+  year               Int
+  description        String         @db.Text
+  featureDescription String?        @db.Text
+  additionalDetails  String?        @db.Text
+  status             ProductStatus  @default(AVAILABLE)
+  orderId            String?        // Will reference the Order in which the product was sold (null if unsold)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  images             Image[]
+}
+
+model Image {
+  id        String   @id @default(uuid())
+  url       String
+  alt       String?
+  order     Int      // Determines display order for images
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+}
