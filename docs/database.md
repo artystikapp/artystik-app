@@ -44,4 +44,15 @@ npx prisma migrate deploy
 
 ## AUTH flow
 
+- we get auth data from clerk webhook payload
 - we are handling in the `User` table `createdAt`, `updatedAt` at the DB level. so expect a bit latency between clerk webhook data & DB data for those fields.
+
+## CI/CD
+
+- prisma generate makes sure the prisma client in `node_modules` is up-to-date with the schema changes already in the code.
+- "build:prod" to be used only on production environment.
+
+```bash
+  "postinstall": "npx prisma generate",
+  "build:prod": "npx prisma migrate deploy && next build",
+```
