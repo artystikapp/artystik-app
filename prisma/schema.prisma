@@ -13,44 +13,73 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
   id        String   @id
   email     String   @unique
   firstName String?
   lastName  String?
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  orders    Order[] // Back relation to the Order model
 }
 
 enum ProductStatus {
-  AVAILABLE
-  SOLD
+  available // Product is available for sale
+  sold // Product has been sold
+  archived // Product is discontinued or no longer available
 }
 
 model Product {
-  id                 String         @id @default(uuid())
+  id                 String        @id @default(uuid())
   title              String
-  price              Decimal        @db.Decimal(10,2)
-  currency           String         @default("INR")
+  price              Int // Price stored in paise
+  currency           String        @default("INR")
   category           String
   year               Int
-  description        String         @db.Text
-  featureDescription String?        @db.Text
-  additionalDetails  String?        @db.Text
-  status             ProductStatus  @default(AVAILABLE)
-  orderId            String?        // Will reference the Order in which the product was sold (null if unsold)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  description        String        @db.Text
+  featureDescription String?       @db.Text
+  additionalDetails  String?       @db.Text
+  status             ProductStatus @default(available)
+  orderId            String? // References the Order in which the product was sold
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  images             Image[]
+  images Image[]
+
+  // Relation: each product may belong to one order.
+  order Order? @relation(fields: [orderId], references: [id])
 }
 
 model Image {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   url       String
   alt       String?
-  order     Int      // Determines display order for images
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order     Int // Determines display order for images
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId String
+}
+
+enum OrderStatus {
+  pending // Order created but payment not confirmed
+  paid // Payment captured successfully
+  shipped // Order has been dispatched
+  delivered // Order has reached the customer
+  failed // Payment failed
+  refunded // Payment refunded
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  razorpayOrderId String // Razorpay's unique order ID
+  razorpayReceipt String      // The receipt value sent to Razorpay (merchant-defined)
+  userId          String // References the user
+  user            User        @relation(fields: [userId], references: [id])
+  amount          Int // Amount stored in paise, from razorpay
+  currency        String      @default("INR") // from razorpay
+  status          OrderStatus @default(pending) // webhooks
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relation: an order can include multiple products.
+  products Product[] // This establishes a one-to-many relation with Product
 }

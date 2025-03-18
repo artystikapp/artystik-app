@@ -5,6 +5,9 @@ import { useState } from "react";
 import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { z } from "zod";
+import { formatCartDescription } from "@/lib/utils";
+import { APP_NAME } from "@/lib/constants";
 
 // Declare Razorpay on the Window interface
 declare global {
@@ -46,6 +49,22 @@ interface RazorpayResponse {
   razorpay_signature: string;
 }
 
+const orderResponseSchema = z.object({
+  order: z.object({
+    id: z.string(),
+  }),
+  razorpay: z.object({
+    id: z.string(),
+    amount: z.union([z.number(), z.string()]),
+    currency: z.string(),
+  }),
+  user: z.object({
+    name: z.string(),
+    email: z.string().email(),
+    // contact: z.string().optional() // Uncomment if you add phone numbers
+  }),
+});
+
 export default function CartPage() {
   const amount = 200;
 
@@ -66,61 +85,62 @@ export default function CartPage() {
   const handleProceedToBuy = async () => {
     console.log("Proceed to Buy clicked with amount:", amount);
 
-    // Create order via your API
-    const res = await fetch("/api/razorpay/create-order", {
-      method: "POST",
-      body: JSON.stringify({ amount, cart: cartPayload }),
-    });
-    const data = await res.json();
-    console.log("💳 Razorpay Order created: ", data);
+    try {
+      // Create order via your API
+      const res = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        body: JSON.stringify({ amount, cart: cartPayload }),
+      });
 
-    const order = data?.order;
+      const createOrderData = await res.json();
 
-    /**
-     * !!! IMPORTANT !!!
-     * send this order for payment to Razorpay only if our backend
-     * has validated the cart items for price and availability
-     * and returned a razorpay order id
-     */
+      // Validate the response with Zod
+      const validatedData = orderResponseSchema.parse(createOrderData);
+      console.log("💳 Validated Razorpay Order: ", validatedData);
 
-    if (order) {
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "", // Use empty string as fallback
-        amount: order.amount, // amount in paise, this comes from our backend from the razorpay.orders.create API response
-        currency: order.currency, // this comes from our backend from the razorpay.orders.create API response
-        name: "Artystik App",
-        // image: "/logo.png", // Customize as needed
-        description: `Test transaction on ${Date.now()} for ${amount}`, // Customize as needed
-        order_id: order.id, // this comes from our backend from the razorpay.orders.create API response
-        handler: function (response: RazorpayResponse) {
-          // This handler is called after payment success
-          console.log("Payment successful:", response);
-          // You can then route to the success page with order id and other info
-          //  Make sure to capture necessary details like razorpay_payment_id, razorpay_order_id, and razorpay_signature.
-          router.push(`/payment/success?orderId=${order.id}`);
-        },
-        prefill: {
-          name: "Test User", // from user details
-          email: "test@example.com", // from user details
-          // contact: "1234567890", // from user details
-        },
-        notes: {
-          user: "user_id_123", // from user details
-          details: JSON.stringify(cartPayload), // from cart payload
-        },
-        theme: {
-          color: "#F37254",
-        },
-      };
+      if (validatedData.razorpay.id) {
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+          order_id: validatedData.razorpay.id,
+          amount: Number(validatedData.razorpay.amount),
+          currency: validatedData.razorpay.currency,
 
-      // Create the Razorpay checkout modal and open it
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } else {
-      // Handle the case when no order is returned:
-      // It might be due to an invalid cart payload, Razorpay failure, or some other issue.
-      console.error("Failed to create order: ", data.error || "Unknown error");
-      // Show an error to the user, e.g. using a toast notification or by updating a state variable:
+          // branding details
+          name: APP_NAME,
+          // logo: "/logo.png",
+          theme: {
+            color: "#F37254",
+          },
+
+          // description of the cart
+          description: formatCartDescription(cartPayload),
+
+          // prefill details
+          prefill: {
+            name: validatedData.user.name,
+            email: validatedData.user.email,
+            // contact: validatedData.user.contact,
+          },
+
+          // notes, for razorpay records
+          notes: {
+            orderId: validatedData.order.id,
+            details: JSON.stringify(cartPayload),
+          },
+
+          // payment success handler
+          handler: function (response: RazorpayResponse) {
+            console.log("Payment successful:", response);
+            router.push(`/payment/success?orderId=${validatedData.order.id}`);
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
+    } catch (error: Error | unknown) {
+      console.error("Error creating order:", error);
+      // Show error to user
     }
   };
 
