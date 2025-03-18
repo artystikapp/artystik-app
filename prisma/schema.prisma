@@ -70,8 +70,8 @@ enum OrderStatus {
 
 model Order {
   id              String      @id @default(uuid())
-  razorpayOrderId String // Razorpay's unique order ID
-  razorpayReceipt String      // The receipt value sent to Razorpay (merchant-defined)
+  razorpayOrderId String      @unique // Razorpay's unique order ID
+  razorpayReceipt String      @unique // Razorpay-defined receipt
   userId          String // References the user
   user            User        @relation(fields: [userId], references: [id])
   amount          Int // Amount stored in paise, from razorpay

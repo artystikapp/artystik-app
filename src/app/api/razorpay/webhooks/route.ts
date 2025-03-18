@@ -2,7 +2,14 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
-import { RAZORPAY_EVENT_TYPES } from "@/lib/constants";
+import {
+  RAZORPAY_EVENT_TYPES,
+  ORDER_STATUS,
+  PRODUCT_STATUS,
+} from "@/lib/constants";
+
+import prisma from "@/lib/prisma";
+import { OrderStatus, ProductStatus } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
@@ -43,46 +50,101 @@ export async function POST(request: Request) {
     const paymentEntity = razorpayWebhookEvent.payload?.payment?.entity;
     const razorpayOrderId = paymentEntity?.order_id; // For payment events
 
+    // Check for razorpayOrderId before the switch case
+    if (!razorpayOrderId) {
+      console.log(
+        "💰Razorpay Webhook🪝: No Razorpay order ID found in webhook payload"
+      );
+      return NextResponse.json(
+        { error: "No Razorpay order ID found in webhook payload" },
+        { status: 400 }
+      );
+    }
+
     // Process the webhook event based on event type
     switch (eventType) {
       case RAZORPAY_EVENT_TYPES.PAYMENT_CAPTURED:
         console.log(
-          "💰Razorpay Webhook: Payment captured. Updating order as 'paid'. ",
+          "💰Razorpay Webhook🪝: Payment captured. Updating order as 'paid'. ",
           razorpayOrderId
         );
-        // Example: update your internal order record to 'paid'
-        // await prisma.order.update({
-        //   where: { razorpayOrderId },
-        //   data: { status: "paid" },
-        // });
+
+        // Update the Order record to 'paid'
+        const updatedPaidOrder = await prisma.order.update({
+          where: { razorpayOrderId: razorpayOrderId },
+          data: { status: ORDER_STATUS.PAID as OrderStatus },
+        });
+
+        console.log(
+          "💰Razorpay Webhook🪝: Updated Paid Order: ",
+          updatedPaidOrder
+        );
+
+        // Update all Products linked to this Order: mark them as 'sold'
+        const updatedPaidProducts = await prisma.product.updateMany({
+          where: { orderId: updatedPaidOrder.id },
+          data: { status: PRODUCT_STATUS.SOLD as ProductStatus },
+        });
+
+        console.log(
+          "💰Razorpay Webhook🪝: Updated Paid Products: ",
+          updatedPaidProducts
+        );
+
         break;
 
       case RAZORPAY_EVENT_TYPES.PAYMENT_FAILED:
         console.log(
-          "💰Razorpay Webhook: Payment failed. Updating order as 'failed'. ",
+          "💰Razorpay Webhook🪝: Payment failed. Updating order as 'failed'. ",
           razorpayOrderId
         );
-        // Example: update your internal order record to 'failed'
-        // await prisma.order.update({
-        //   where: { razorpayOrderId },
-        //   data: { status: "failed" },
-        // });
+
+        // Update the Order record to 'failed'
+        const updatedFailedOrder = await prisma.order.update({
+          where: { razorpayOrderId: razorpayOrderId },
+          data: { status: ORDER_STATUS.FAILED as OrderStatus },
+        });
+
+        console.log(
+          "💰Razorpay Webhook🪝: Updated Failed Order: ",
+          updatedFailedOrder
+        );
+
         break;
 
       case RAZORPAY_EVENT_TYPES.REFUND_PROCESSED:
         console.log(
-          "💰Razorpay Webhook: Refund processed. Updating order as 'refunded'. ",
+          "💰Razorpay Webhook🪝: Refund processed. Updating order as 'refunded'. ",
           razorpayOrderId
         );
-        // Example: update your internal order record to 'refunded'
-        // await prisma.order.update({
-        //   where: { razorpayOrderId },
-        //   data: { status: "refunded" },
-        // });
+
+        // Update the Order record to 'refunded'
+        const updatedRefundedOrder = await prisma.order.update({
+          where: { razorpayOrderId: razorpayOrderId },
+          data: { status: ORDER_STATUS.REFUNDED as OrderStatus },
+        });
+
+        console.log(
+          "💰Razorpay Webhook🪝: Updated Refunded Order: ",
+          updatedRefundedOrder
+        );
+
+        // Update all Products linked to this Order: mark them as 'archived'
+        // we come back and maybe manually unarchive them if needed
+        const updatedRefundedProducts = await prisma.product.updateMany({
+          where: { orderId: updatedRefundedOrder.id },
+          data: { status: PRODUCT_STATUS.ARCHIVED as ProductStatus },
+        });
+
+        console.log(
+          "💰Razorpay Webhook🪝: Updated Refunded Products: ",
+          updatedRefundedProducts
+        );
+
         break;
 
       default:
-        console.log(`💰Razorpay Webhook: Unhandled event type: ${eventType}`);
+        console.log(`💰Razorpay Webhook🪝: Unhandled event type: ${eventType}`);
         break;
     }
 
