@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { formatCartDescription } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
+import { useStore } from "@/store";
+
 import { APP_NAME } from "@/lib/constants";
 
 // Declare Razorpay on the Window interface
@@ -66,13 +69,11 @@ const orderResponseSchema = z.object({
 });
 
 export default function CartPage() {
-  const amount = 200;
-
-  // better to have this only critical details
-  const cartPayload = [
-    { id: "product_id_99", title: "Product 99", price: "150.00" },
-    { id: "product_id_100", title: "Product 100", price: "50.00" },
-  ];
+  const items = useStore((state) => state.items);
+  const totalItems = useStore((state) => state.totalItems);
+  const totalAmount = useStore((state) => state.totalAmount);
+  const removeItem = useStore((state) => state.removeItem);
+  const clearCart = useStore((state) => state.clearCart);
 
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const router = useRouter();
@@ -83,13 +84,22 @@ export default function CartPage() {
   };
 
   const handleProceedToBuy = async () => {
-    console.log("Proceed to Buy clicked with amount:", amount);
+    if (items.length === 0) {
+      console.log("Cart is empty");
+      return;
+    }
+
+    console.log("Proceed to Buy clicked with amount:", totalAmount);
 
     try {
       // Create order via your API
       const res = await fetch("/api/razorpay/create-order", {
         method: "POST",
-        body: JSON.stringify({ amount, cart: cartPayload }),
+        body: JSON.stringify({
+          // handle the amount conversion to paisa better later
+          amount: Math.round(totalAmount * 100),
+          cart: items,
+        }),
       });
 
       const createOrderData = await res.json();
@@ -113,7 +123,7 @@ export default function CartPage() {
           },
 
           // description of the cart
-          description: formatCartDescription(cartPayload),
+          description: formatCartDescription(items),
 
           // prefill details
           prefill: {
@@ -125,7 +135,7 @@ export default function CartPage() {
           // notes, for razorpay records
           notes: {
             orderId: validatedData.order.id,
-            details: JSON.stringify(cartPayload),
+            details: JSON.stringify(items),
           },
 
           // payment success handler
@@ -147,27 +157,80 @@ export default function CartPage() {
   return (
     <div className="p-8 max-w-xl mx-auto">
       <h1 className="text-3xl font-bold mb-4">Cart Page</h1>
-      <p className="text-lg mb-6">
-        Total Amount: <span className="font-semibold">₹{amount}</span>
-      </p>
 
-      <Script
-        src={process.env.NEXT_PUBLIC_RAZORPAY_SCRIPT_URL || ""}
-        strategy="afterInteractive"
-        onLoad={handleScriptLoad}
-      />
+      {items.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-lg text-gray-500 mb-4">Your cart is empty</p>
+          <Button onClick={() => router.push("/products")} variant="outline">
+            Continue Shopping
+          </Button>
+        </div>
+      ) : (
+        <>
+          {/* Cart Items List */}
+          <div className="border rounded-lg overflow-hidden mb-6">
+            <div className="divide-y">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-4 flex justify-between items-center"
+                >
+                  <div className="flex-1">
+                    <h3 className="font-medium text-lg">{item.title}</h3>
+                    <p className="text-blue-600 font-semibold">₹{item.price}</p>
+                  </div>
+                  <Button
+                    onClick={() => removeItem(item.id)}
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-500"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
 
-      <Button
-        onClick={handleProceedToBuy}
-        disabled={!scriptLoaded}
-        className={`w-full py-3 px-6 rounded-md transition-colors focus:outline-none ${
-          scriptLoaded
-            ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-            : "bg-gray-400 text-gray-700 cursor-not-allowed"
-        }`}
-      >
-        {scriptLoaded ? "Proceed to Buy" : "Loading Payment Gateway..."}
-      </Button>
+          {/* Cart Summary */}
+          <div className="border rounded-lg p-4 mb-6">
+            <div className="flex justify-between mb-2">
+              <span>Subtotal ({totalItems} items)</span>
+              <span>₹{totalAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
+              <span>Total</span>
+              <span>₹{totalAmount.toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between mb-6">
+            <Button onClick={clearCart} variant="outline">
+              Clear Cart
+            </Button>
+            <Button onClick={() => router.push("/products")} variant="outline">
+              Continue Shopping
+            </Button>
+          </div>
+
+          <Script
+            src={process.env.NEXT_PUBLIC_RAZORPAY_SCRIPT_URL || ""}
+            strategy="afterInteractive"
+            onLoad={handleScriptLoad}
+          />
+
+          <Button
+            onClick={handleProceedToBuy}
+            disabled={!scriptLoaded || items.length === 0}
+            className="w-full py-3 px-6 rounded-md transition-colors focus:outline-none"
+          >
+            {scriptLoaded
+              ? "Proceed to Checkout"
+              : "Loading Payment Gateway..."}
+          </Button>
+        </>
+      )}
     </div>
   );
 }

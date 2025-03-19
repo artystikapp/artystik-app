@@ -23,6 +23,7 @@ const createOrderSchema = z.object({
       z.object({
         id: z.string(),
         title: z.string(),
+        image: z.string().optional(),
         price: z.string(), // send price in paise
       })
     )
