@@ -14,72 +14,72 @@ datasource db {
 }
 
 model User {
-  id        String   @id
-  email     String   @unique
-  firstName String?
-  lastName  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  orders    Order[] // Back relation to the Order model
+  id         String   @id
+  email      String   @unique
+  first_name String?
+  last_name  String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  orders     Order[]  // Back relation to the Order model
 }
 
 enum ProductStatus {
   available // Product is available for sale
-  sold // Product has been sold
-  archived // Product is discontinued or no longer available
+  sold      // Product has been sold
+  archived  // Product is discontinued or no longer available
 }
 
 model Product {
-  id                 String        @id @default(uuid())
-  title              String
-  price              Int // Price stored in paise
-  currency           String        @default("INR")
-  category           String
-  year               Int
-  description        String        @db.Text
-  featureDescription String?       @db.Text
-  additionalDetails  String?       @db.Text
-  status             ProductStatus @default(available)
-  orderId            String? // References the Order in which the product was sold
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  id                  String        @id @default(uuid())
+  title               String
+  price               Int           // Price stored in paise
+  currency            String        @default("INR")
+  category            String
+  year                Int
+  description         String        @db.Text
+  feature_description String?       @db.Text
+  additional_details  String?       @db.Text
+  status              ProductStatus @default(available)
+  order_id            String?       // References the Order in which the product was sold
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
 
-  images Image[]
+  images              Image[]
 
   // Relation: each product may belong to one order.
-  order Order? @relation(fields: [orderId], references: [id])
+  order               Order?        @relation(fields: [order_id], references: [id])
 }
 
 model Image {
-  id        String  @id @default(uuid())
-  url       String
-  alt       String?
-  order     Int // Determines display order for images
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId String
+  id         String  @id @default(uuid())
+  url        String
+  alt        String?
+  order      Int     // Determines display order for images
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product_id String
 }
 
 enum OrderStatus {
-  pending // Order created but payment not confirmed
-  paid // Payment captured successfully
-  shipped // Order has been dispatched
+  pending   // Order created but payment not confirmed
+  paid      // Payment captured successfully
+  shipped   // Order has been dispatched
   delivered // Order has reached the customer
-  failed // Payment failed
-  refunded // Payment refunded
+  failed    // Payment failed
+  refunded  // Payment refunded
 }
 
 model Order {
-  id              String      @id @default(uuid())
-  razorpayOrderId String      @unique // Razorpay's unique order ID
-  razorpayReceipt String      @unique // Razorpay-defined receipt
-  userId          String // References the user
-  user            User        @relation(fields: [userId], references: [id])
-  amount          Int // Amount stored in paise, from razorpay
-  currency        String      @default("INR") // from razorpay
-  status          OrderStatus @default(pending) // webhooks
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                 String      @id @default(uuid())
+  razorpay_order_id  String      @unique // Razorpay's unique order ID
+  razorpay_receipt   String      @unique // Razorpay-defined receipt
+  user_id            String      // References the user
+  user               User        @relation(fields: [user_id], references: [id])
+  amount             Int         // Amount stored in paise, from razorpay
+  currency           String      @default("INR") // from razorpay
+  status             OrderStatus @default(pending) // webhooks
+  created_at         DateTime    @default(now())
+  updated_at         DateTime    @updatedAt
 
   // Relation: an order can include multiple products.
-  products Product[] // This establishes a one-to-many relation with Product
+  products           Product[] // This establishes a one-to-many relation with Product
 }

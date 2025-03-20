@@ -4,7 +4,7 @@
 
 - `main` branch for PROD
 - `develop` branch for DEV
-- typically `snake_casing` is used for databases, here we have used `camelCased` so please remember to use quotes around field names when doing raw SQL queries.
+- use ONLY `snake_casing` for table fields.
 
 ## prisma setup
 
