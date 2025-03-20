@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
         // Update the Order record to 'paid'
         const updatedPaidOrder = await prisma.order.update({
-          where: { razorpayOrderId: razorpayOrderId },
+          where: { razorpay_order_id: razorpayOrderId },
           data: { status: ORDER_STATUS.PAID as OrderStatus },
         });
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
         // Update all Products linked to this Order: mark them as 'sold'
         const updatedPaidProducts = await prisma.product.updateMany({
-          where: { orderId: updatedPaidOrder.id },
+          where: { order_id: updatedPaidOrder.id },
           data: { status: PRODUCT_STATUS.SOLD as ProductStatus },
         });
 
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
 
         // Update the Order record to 'failed'
         const updatedFailedOrder = await prisma.order.update({
-          where: { razorpayOrderId: razorpayOrderId },
+          where: { razorpay_order_id: razorpayOrderId },
           data: { status: ORDER_STATUS.FAILED as OrderStatus },
         });
 
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 
         // Update the Order record to 'refunded'
         const updatedRefundedOrder = await prisma.order.update({
-          where: { razorpayOrderId: razorpayOrderId },
+          where: { razorpay_order_id: razorpayOrderId },
           data: { status: ORDER_STATUS.REFUNDED as OrderStatus },
         });
 
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
         // Update all Products linked to this Order: mark them as 'archived'
         // we come back and maybe manually unarchive them if needed
         const updatedRefundedProducts = await prisma.product.updateMany({
-          where: { orderId: updatedRefundedOrder.id },
+          where: { order_id: updatedRefundedOrder.id },
           data: { status: PRODUCT_STATUS.ARCHIVED as ProductStatus },
         });
 

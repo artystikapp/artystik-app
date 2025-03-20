@@ -102,8 +102,8 @@ async function handleUserCreated(data: WebhookEvent["data"]) {
     data: {
       id: id,
       email: primaryEmail ?? "",
-      firstName: firstName ?? "",
-      lastName: lastName ?? "",
+      first_name: firstName ?? "",
+      last_name: lastName ?? "",
     },
   });
 
@@ -131,8 +131,8 @@ async function handleUserUpdated(data: WebhookEvent["data"]) {
     where: { id },
     data: {
       email: primaryEmail ?? "",
-      firstName: firstName ?? "",
-      lastName: lastName ?? "",
+      first_name: firstName ?? "",
+      last_name: lastName ?? "",
     },
   });
 

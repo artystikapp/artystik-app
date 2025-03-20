@@ -135,9 +135,9 @@ export async function POST(request: Request) {
     // Save the order to the database
     const internalOrder = await prisma.order.create({
       data: {
-        userId: userId, // Replace with the actual user ID from your auth context
-        razorpayOrderId: razorpayOrder.id, // Razorpay's unique order ID
-        razorpayReceipt: receiptValue, // The receipt value sent to Razorpay (merchant-defined)
+        user_id: userId, // Replace with the actual user ID from your auth context
+        razorpay_order_id: razorpayOrder.id, // Razorpay's unique order ID
+        razorpay_receipt: receiptValue, // The receipt value sent to Razorpay (merchant-defined)
         amount: parseInt(String(razorpayOrder.amount), 10), // Convert to string first, then parse
         currency: razorpayOrder.currency, // e.g., "INR"
         status: ORDER_STATUS.PENDING as OrderStatus, // Use the enum string value directly to match Prisma schema
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
         currency: razorpayOrder.currency,
       },
       user: {
-        name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
         email: user.email,
         // Uncomment below if phone exists: contact: user.phone,
       },
