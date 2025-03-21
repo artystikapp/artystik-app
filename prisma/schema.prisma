@@ -14,25 +14,26 @@ datasource db {
 }
 
 model User {
-  id         String   @id
-  email      String   @unique
-  first_name String?
-  last_name  String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  orders     Order[]  // Back relation to the Order model
+  id           String         @id
+  email        String         @unique
+  first_name   String?
+  last_name    String?
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+  orders       Order[] // Back relation to the Order model
+  Notification Notification[]
 }
 
 enum ProductStatus {
   available // Product is available for sale
-  sold      // Product has been sold
-  archived  // Product is discontinued or no longer available
+  sold // Product has been sold
+  archived // Product is discontinued or no longer available
 }
 
 model Product {
   id                  String        @id @default(uuid())
   title               String
-  price               Int           // Price stored in paise
+  price               Int // Price stored in paise
   currency            String        @default("INR")
   category            String
   year                Int
@@ -40,47 +41,68 @@ model Product {
   feature_description String?       @db.Text
   additional_details  String?       @db.Text
   status              ProductStatus @default(available)
-  order_id            String?       // References the Order in which the product was sold
+  order_id            String? // References the Order in which the product was sold
   created_at          DateTime      @default(now())
   updated_at          DateTime      @updatedAt
 
-  images              Image[]
+  images Image[]
 
   // Relation: each product may belong to one order.
-  order               Order?        @relation(fields: [order_id], references: [id])
+  order Order? @relation(fields: [order_id], references: [id])
 }
 
 model Image {
   id         String  @id @default(uuid())
   url        String
   alt        String?
-  order      Int     // Determines display order for images
+  order      Int // Determines display order for images
   product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
   product_id String
 }
 
 enum OrderStatus {
-  pending   // Order created but payment not confirmed
-  paid      // Payment captured successfully
-  shipped   // Order has been dispatched
+  pending // Order created but payment not confirmed
+  paid // Payment captured successfully
+  shipped // Order has been dispatched
   delivered // Order has reached the customer
-  failed    // Payment failed
-  refunded  // Payment refunded
+  failed // Payment failed
+  refunded // Payment refunded
 }
 
 model Order {
-  id                 String      @id @default(uuid())
-  razorpay_order_id  String      @unique // Razorpay's unique order ID
-  razorpay_receipt   String      @unique // Razorpay-defined receipt
-  user_id            String      // References the user
-  user               User        @relation(fields: [user_id], references: [id])
-  amount             Int         // Amount stored in paise, from razorpay
-  currency           String      @default("INR") // from razorpay
-  status             OrderStatus @default(pending) // webhooks
-  notes              String?     @db.Text // Optional admin notes field
-  created_at         DateTime    @default(now())
-  updated_at         DateTime    @updatedAt
+  id                String      @id @default(uuid())
+  razorpay_order_id String      @unique // Razorpay's unique order ID
+  razorpay_receipt  String      @unique // Razorpay-defined receipt
+  user_id           String // References the user
+  user              User        @relation(fields: [user_id], references: [id])
+  amount            Int // Amount stored in paise, from razorpay
+  currency          String      @default("INR") // from razorpay
+  status            OrderStatus @default(pending) // webhooks
+  notes             String?     @db.Text // Optional admin notes field
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
 
-  // Relation: an order can include multiple products.
-  products           Product[] // This establishes a one-to-many relation with Product
+  products      Product[] // one-to-many relation with Product  
+  notifications Notification[] // one-to-many relation with Notification  
+}
+
+enum NotificationType {
+  email
+  sms
+  whatsapp
+}
+
+model Notification {
+  id       String           @id // Resend emailId, SMS provider ID, or DB-generated UUID
+  type     NotificationType // 'email', 'sms', 'whatsapp'
+  event    OrderStatus // Uses existing OrderStatus enum: 'shipped', 'delivered', etc.
+  sent_at  DateTime? // Null if not sent, timestamp if sent
+  order_id String // Foreign key to Order
+  user_id  String // Foreign key to User
+  order    Order            @relation(fields: [order_id], references: [id])
+  user     User             @relation(fields: [user_id], references: [id])
+
+  @@unique([order_id, type, event]) // One notification per type and event per order
+  @@index([order_id]) // Improves query performance
+  @@index([user_id]) // Improves query performance
 }
