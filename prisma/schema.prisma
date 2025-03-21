@@ -77,6 +77,7 @@ model Order {
   amount             Int         // Amount stored in paise, from razorpay
   currency           String      @default("INR") // from razorpay
   status             OrderStatus @default(pending) // webhooks
+  notes              String?     @db.Text // Optional admin notes field
   created_at         DateTime    @default(now())
   updated_at         DateTime    @updatedAt
 
