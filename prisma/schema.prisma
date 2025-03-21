@@ -79,6 +79,7 @@ model Order {
   currency          String      @default("INR") // from razorpay
   status            OrderStatus @default(pending) // webhooks
   notes             String?     @db.Text // Optional admin notes field
+  shipping_info     String?     @db.Text // Optional shipping information
   created_at        DateTime    @default(now())
   updated_at        DateTime    @updatedAt
 
