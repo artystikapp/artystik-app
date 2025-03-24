@@ -30,12 +30,20 @@ enum ProductStatus {
   archived // Product is discontinued or no longer available
 }
 
+model Category {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  name        String
+  description String?
+  products    Product[]
+}
+
 model Product {
   id                  String        @id @default(uuid())
   title               String
-  price               Int // Price stored in paise
+  price               Int           // Price stored in paise
   currency            String        @default("INR")
-  category            String
+  category_id         String        // stores the category id for this product's category
   year                Int
   description         String        @db.Text
   feature_description String?       @db.Text
@@ -49,6 +57,7 @@ model Product {
 
   // Relation: each product may belong to one order.
   order Order? @relation(fields: [order_id], references: [id])
+  category Category  @relation(fields: [category_id], references: [id])
 }
 
 model Image {
