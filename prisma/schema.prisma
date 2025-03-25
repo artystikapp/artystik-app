@@ -51,7 +51,7 @@ model Product {
   status              ProductStatus @default(available)
   order_id            String? // References the Order in which the product was sold
   created_at          DateTime      @default(now())
-  updated_at          DateTime      @updatedAt
+  updated_at          DateTime      @default(now()) @updatedAt
 
   images Image[]
 
